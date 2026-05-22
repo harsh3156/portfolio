@@ -33,64 +33,47 @@ export default function Contact() {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    if (!window.Email) {
-      setError("Email service library (SMTP.js) failed to load. Please refresh the page.");
-      setTimeout(() => setError(null), 5000);
-      return;
-    }
-
     setSending(true);
     setError(null);
 
-    const gmailUser = import.meta.env.VITE_GMAIL_USER;
-    const gmailAppPassword = import.meta.env.VITE_GMAIL_APP_PASSWORD;
-
-    if (!gmailUser || !gmailAppPassword || gmailAppPassword.includes("YOUR_GMAIL_APP_PASSWORD_HERE")) {
-      setError("Please configure VITE_GMAIL_USER and VITE_GMAIL_APP_PASSWORD in your .env file.");
-      setSending(false);
-      setTimeout(() => setError(null), 6000);
-      return;
-    }
-
     const emailSubject = `${import.meta.env.VITE_CONTACT_SUBJECT_PREFIX || 'Portfolio Contact'}: ${form.subject}`;
-    const emailBody = `
-      <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; line-height: 1.6;">
-        <h2 style="color: #00f5ff; border-bottom: 2px solid #00f5ff; padding-bottom: 10px;">New Portfolio Contact Message</h2>
-        <p><strong>Name:</strong> ${form.name}</p>
-        <p><strong>Email:</strong> ${form.email}</p>
-        <p><strong>Subject:</strong> ${form.subject}</p>
-        <div style="margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #00f5ff; border-radius: 4px;">
-          <p><strong>Message:</strong></p>
-          <p style="white-space: pre-wrap;">${form.message}</p>
-        </div>
-      </div>
-    `;
 
-    window.Email.send({
-      Host: "smtp.gmail.com",
-      Username: gmailUser,
-      Password: gmailAppPassword,
-      To: 'harshkaklotar09@gmail.com',
-      From: gmailUser, // Gmail SMTP requires authenticated user
-      Subject: emailSubject,
-      Body: emailBody
+    fetch("https://formsubmit.co/ajax/harshkaklotar09@gmail.com", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({
+        name: form.name,
+        email: form.email,
+        subject: form.subject,
+        message: form.message,
+        _subject: emailSubject
+      })
     })
-    .then((message) => {
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(`HTTP error! Status: ${res.status}`);
+      }
+      return res.json();
+    })
+    .then((data) => {
       setSending(false);
-      if (message === 'OK') {
+      if (data.success === 'true' || data.success === true) {
         setSubmitted(true);
         setTimeout(() => setSubmitted(false), 5000);
         setForm({ name: '', email: '', subject: '', message: '' });
       } else {
-        console.error("SMTPJS error:", message);
-        setError(`Failed to send: ${message}`);
-        setTimeout(() => setError(null), 6000);
+        console.error("FormSubmit error:", data);
+        setError("Failed to send message. Please try again.");
+        setTimeout(() => setError(null), 5000);
       }
     })
     .catch((err) => {
       setSending(false);
-      console.error("SMTPJS exception:", err);
-      setError("An unexpected error occurred while sending the email.");
+      console.error("FormSubmit exception:", err);
+      setError("An error occurred while sending. Please try again later.");
       setTimeout(() => setError(null), 5000);
     });
   };
